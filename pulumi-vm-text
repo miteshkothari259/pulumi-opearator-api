@@ -1,0 +1,91 @@
+Here are the steps to create a VM using the Pulumi operator and YAML:
+
+    Open a text editor and create a new YAML file.
+
+    Define the API version and kind for the PulumiStack resource. The API version should be pulumi.com/v1alpha1 and the kind should be PulumiStack.
+-------------------------------------------------
+
+apiVersion: pulumi.com/v1alpha1
+kind: PulumiStack
+-----------------------------------------------------------------------------------------
+Define the metadata for the PulumiStack resource, including a name and namespace.
+
+-----------------------------------------------
+
+metadata:
+  name: my-vm-stack
+  namespace: default
+---------------------------------------------------------------------------------
+Define the spec for the PulumiStack resource, including the Pulumi program and configuration.
+
+python
+-------------------------------------------------------------------------------
+spec:
+  program: |
+    import pulumi
+    import pulumi_azure_native as azure_native
+    import pulumi_azuread as azuread
+
+    # Create an Azure Resource Group
+    resource_group = azure_native.resources.ResourceGroup("my-rg")
+
+    # Create an Azure Active Directory application
+    app = azuread.Application("my-app")
+
+    # Create an Azure Virtual Machine
+    vm = azure_native.compute.VirtualMachine("my-vm",
+        resource_group_name=resource_group.name,
+        location=resource_group.location,
+        hardware_profile={
+            "vmSize": "Standard_D2_v3"
+        },
+        storage_profile={
+            "image_reference": {
+                "publisher": "Canonical",
+                "offer": "UbuntuServer",
+                "sku": "18.04-LTS",
+                "version": "latest"
+            },
+            "os_disk": {
+                "create_option": "FromImage"
+            },
+            "data_disks": []
+        },
+        os_profile={
+            "computer_name": "my-vm",
+            "admin_username": "adminuser",
+            "admin_password": pulumi.secret("my-password"),
+            "linux_configuration": {
+                "disable_password_authentication": False
+            }
+        },
+        network_profile={
+            "network_interfaces": [{
+                "id": "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP>/providers/Microsoft.Network/networkInterfaces/my-nic"
+            }]
+        })
+
+    # Export the public IP address of the virtual machine
+    pulumi.export("public_ip", vm.public_ip_address)
+
+  config:
+    azure_native:subscription_id: "<SUBSCRIPTION_ID>"
+    azure_native:client_id: "<CLIENT_ID>"
+    azure_native:client_secret: "<CLIENT_SECRET>"
+    azure_native:tenant_id: "<TENANT_ID>"
+--------------------------------------------------------------------------------------------------------
+This program creates an Azure Resource Group, an Azure Active Directory application, and an Azure Virtual Machine. It also exports the public IP address of the virtual machine.
+
+Note that you will need to replace the <SUBSCRIPTION_ID>, <CLIENT_ID>, <CLIENT_SECRET>, and <TENANT_ID> placeholders with your actual Azure subscription ID, client ID, client secret, and tenant ID, respectively.
+
+Save the YAML file with a .yaml or .yml extension.
+
+Apply the YAML file using the kubectl apply command:
+
+arduino
+
+    kubectl apply -f my-vm-stack.yaml
+
+    This will create the PulumiStack resource in your Kubernetes cluster and run the Pulumi program to create the Azure resources.
+
+That's it! You've now created a VM using the Pulumi operator and YAML.
